@@ -1,0 +1,5 @@
+{
+  "name": "Pretty Alice",
+  "description": "Your personal AI beauty coach and confidence booster. Real-time makeup advice, skin health tips, and live multimodal consultations.",
+  "requestFramePermissions": ["camera", "microphone", "geolocation"]
+}

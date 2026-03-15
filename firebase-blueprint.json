@@ -1,0 +1,89 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Information about the user.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email"]
+    },
+    "Session": {
+      "title": "Makeup Session",
+      "description": "A live or chat session with the makeup assistant.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "startTime": { "type": "string", "format": "date-time" },
+        "type": { "type": "string", "enum": ["live", "chat"] }
+      },
+      "required": ["userId", "startTime", "type"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "A message within a session.",
+      "type": "object",
+      "properties": {
+        "sessionId": { "type": "string" },
+        "sender": { "type": "string", "enum": ["user", "ai"] },
+        "content": { "type": "string" },
+        "type": { "type": "string", "enum": ["text", "image", "video"] },
+        "mediaUrl": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["sessionId", "sender", "content", "type", "createdAt"]
+    },
+    "Product": {
+      "title": "Makeup Product",
+      "description": "A product in the user's makeup kit.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "brand": { "type": "string" },
+        "category": { "type": "string" },
+        "shade": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "addedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "addedAt"]
+    },
+    "WishlistItem": {
+      "title": "Wishlist Item",
+      "description": "A product recommended by Alice that the user might want to add.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "reason": { "type": "string" },
+        "addedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "addedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles."
+    },
+    "/users/{userId}/vanity/{productId}": {
+      "schema": "Product",
+      "description": "User's makeup kit."
+    },
+    "/users/{userId}/wishlist/{itemId}": {
+      "schema": "WishlistItem",
+      "description": "Alice's recommendations for the user."
+    },
+    "/sessions/{sessionId}": {
+      "schema": "Session",
+      "description": "User sessions."
+    },
+    "/sessions/{sessionId}/messages/{messageId}": {
+      "schema": "Message",
+      "description": "Messages in a session."
+    }
+  }
+}

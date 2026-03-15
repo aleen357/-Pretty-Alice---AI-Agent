@@ -1,0 +1,87 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "aleenaamer357@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email']) &&
+             data.uid is string &&
+             data.email is string;
+    }
+
+    function isValidMessage(data) {
+      return data.keys().hasAll(['sender', 'content', 'type', 'createdAt']) &&
+             data.sender in ['user', 'ai'] &&
+             data.content is string &&
+             data.content.size() < 10000 &&
+             data.type in ['text', 'image', 'video'] &&
+             (!('mediaUrl' in data) || data.mediaUrl == null || data.mediaUrl is string);
+    }
+
+    function isValidProduct(data) {
+      return data.keys().hasAll(['name', 'addedAt']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             (!('brand' in data) || data.brand is string) &&
+             (!('category' in data) || data.category is string) &&
+             (!('shade' in data) || data.shade is string);
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    // User Rules
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isOwner(userId) && isValidUser(request.resource.data);
+
+      match /messages/{messageId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidMessage(request.resource.data);
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+
+      match /vanity/{productId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidProduct(request.resource.data);
+        allow update: if isOwner(userId) && isValidProduct(request.resource.data);
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+
+      match /wishlist/{itemId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId);
+        allow update: if isOwner(userId);
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+    }
+
+    // Legacy Session Rules (if still needed)
+    match /sessions/{sessionId} {
+      allow read: if isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      
+      match /messages/{messageId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated();
+      }
+    }
+  }
+}
