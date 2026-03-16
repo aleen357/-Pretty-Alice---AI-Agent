@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { auth, db, signIn, logOut, handleFirestoreError, OperationType } from './firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp, doc, setDoc, deleteDoc, getDocs, writeBatch } from 'firebase/firestore';
-import { generateMakeupAdvice, generateFaceMap, generateMakeupVideo, generateReferenceImage, connectLiveAgent, findMakeupStores, handleApiError, validateImageForMakeup, applyMakeupToUser, generateSpeech } from './services/gemini';
+import { generateMakeupAdvice, generateFaceMap, generateMakeupVideo, generateReferenceImage, connectLiveAgent, findMakeupStores, handleApiError, validateImageForMakeup, applyMakeupToUser, generateSpeech } from './services/api';
 import { AudioStreamer, AudioPlayer } from './services/audio';
 import { Camera, Mic, MicOff, Send, Image as ImageIcon, Video, LogOut, User as UserIcon, Sparkles, Loader2, Play, X, Package, Trash2, Key } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -133,6 +133,18 @@ export default function App() {
     return null;
   };
 
+  const pruneOldMessages = async (uid?: string) => {
+    const targetUid = uid ?? user?.uid;
+    if (!targetUid) return;
+    const msgPath = `users/${targetUid}/messages`;
+    const snapshot = await getDocs(query(collection(db, msgPath), orderBy('createdAt', 'asc')));
+    const toDelete = snapshot.docs.slice(0, Math.max(0, snapshot.docs.length - 10));
+    if (toDelete.length === 0) return;
+    const batch = writeBatch(db);
+    toDelete.forEach(d => batch.delete(d.ref));
+    await batch.commit();
+  };
+
   const toggleLive = async () => {
     if (isLive) {
       liveSessionRef.current?.close();
@@ -232,24 +244,21 @@ export default function App() {
       // Prepare context from last 5 messages
       const recentContext = messages.slice(-5).map(m => `${m.sender === 'user' ? 'User' : 'Alice'}: ${m.content}`).join('\n');
 
-      const sessionPromise = connectLiveAgent({
+      const session = await connectLiveAgent({
         onopen: () => {
           console.log("Live session opened");
-          // Set ref immediately on open if possible
-          sessionPromise.then(s => {
-            console.log("Live session ref set in onopen");
-            liveSessionRef.current = s;
-            setIsSessionReady(true);
-            isSessionReadyRef.current = true;
+          console.log("Live session ref set in onopen");
+          liveSessionRef.current = session;
+          setIsSessionReady(true);
+          isSessionReadyRef.current = true;
 
-            // Send initial context if we have a reference image
-            if (lastReferenceImageRef.current) {
-              console.log("Sending last reference image to live session");
-              s.sendRealtimeInput({
-                media: { data: lastReferenceImageRef.current, mimeType: 'image/jpeg' }
-              });
-            }
-          });
+          // Send initial context if we have a reference image
+          if (lastReferenceImageRef.current) {
+            console.log("Sending last reference image to live session");
+            session.sendRealtimeInput({
+              media: { data: lastReferenceImageRef.current, mimeType: 'image/jpeg' }
+            });
+          }
         },
         onmessage: async (msg: any) => {
           console.log("Live message received:", msg);
@@ -563,11 +572,6 @@ export default function App() {
         }
       }, recentContext);
 
-      sessionPromise.then(s => {
-        liveSessionRef.current = s;
-      });
-
-      const session = await sessionPromise;
       liveSessionRef.current = session;
     } catch (err) {
       console.error("Failed to connect live agent:", err);
@@ -592,6 +596,9 @@ export default function App() {
           updatedAt: serverTimestamp()
         }, { merge: true });
 
+        // Prune old messages on login, keep only the 10 most recent
+        await pruneOldMessages(u.uid);
+
         // Check for vanity products to trigger onboarding
         const vanityPath = `users/${u.uid}/vanity`;
         onSnapshot(query(collection(db, vanityPath), limit(1)), (snapshot) => {
@@ -611,7 +618,7 @@ export default function App() {
       const q = query(
         collection(db, path),
         orderBy('createdAt', 'desc'),
-        limit(50)
+        limit(10)
       );
       const unsubscribe = onSnapshot(q, (snapshot) => {
         const msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).reverse();

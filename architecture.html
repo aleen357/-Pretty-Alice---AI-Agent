@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Pretty Alice – Architecture Diagram</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    body { background: #0a0a0a; color: #e4e4e7; font-family: sans-serif; padding: 2rem; }
+    h1 { color: #10b981; margin-bottom: 0.25rem; }
+    p  { color: #71717a; margin-bottom: 2rem; font-size: 0.9rem; }
+    .mermaid { background: #111; border-radius: 1rem; padding: 2rem; }
+  </style>
+</head>
+<body>
+  <h1>Pretty Alice – Architecture Diagram</h1>
+  <p>Full module map: React UI → Firebase → Gemini AI services</p>
+
+  <div class="mermaid">
+flowchart TD
+
+  %% ── Entry ──────────────────────────────────────────────────────────────
+  subgraph Entry["Entry Point"]
+    main["main.tsx\n(ReactDOM root)"]
+    EB["ErrorBoundary\n(global crash handler)"]
+    main --> EB
+  end
+
+  %% ── App Shell ───────────────────────────────────────────────────────────
+  subgraph AppShell["App.tsx  (main orchestrator)"]
+    direction TB
+    Auth["Auth state\nonAuthStateChanged"]
+    ChatState["Chat state\nmessages / input / images"]
+    LiveState["Live session state\nisLive / isSessionReady"]
+    VanityState["Vanity state\nvanityProducts"]
+    CameraCanvas["Camera + Canvas\ncaptureFrame()"]
+    HandleSend["handleSend()\ntext + image chat"]
+    ToggleLive["toggleLive()\nstart / stop live session"]
+    PlayVerbal["playVerbalConfirmation()"]
+  end
+
+  EB --> AppShell
+
+  %% ── Components ──────────────────────────────────────────────────────────
+  subgraph Components["Components"]
+    VM["VanityManager.tsx\nMy Kit + Beauty Essentials tabs"]
+  end
+
+  AppShell -->|showVanity| VM
+
+  %% ── Firebase ────────────────────────────────────────────────────────────
+  subgraph Firebase["firebase.ts  +  Firestore"]
+    FBInit["initializeApp\n+ initializeFirestore\n(long-polling)"]
+    FBAuth["Firebase Auth\nGoogle OAuth"]
+    FBCollections["Firestore Collections\nusers/{uid}/messages\nusers/{uid}/vanity\nusers/{uid}/wishlist"]
+    FBError["handleFirestoreError()\nstructured error + throw"]
+    FBInit --> FBAuth
+    FBInit --> FBCollections
+  end
+
+  Auth -->|signIn / logOut| FBAuth
+  Auth -->|onAuthStateChanged| FBAuth
+  ChatState -->|addDoc / onSnapshot| FBCollections
+  VanityState -->|onSnapshot| FBCollections
+  VM -->|addDoc / deleteDoc / onSnapshot| FBCollections
+  FBCollections -->|errors| FBError
+
+  %% ── Gemini Services ─────────────────────────────────────────────────────
+  subgraph GeminiSvc["services/gemini.ts"]
+    direction TB
+
+    subgraph TextModels["Text / Advice"]
+      GenAdvice["generateMakeupAdvice()\ngemini-3-flash-preview\n+ addToWishlist tool"]
+      ValidateImg["validateImageForMakeup()\ngemini-3-flash-preview\nJSON schema response"]
+      FindStores["findMakeupStores()\ngemini-2.5-flash\n+ Google Maps tool"]
+      AnalyzeProd["analyzeProductImage()\ngemini-3-flash-preview\nJSON schema response"]
+    end
+
+    subgraph ImageModels["Image Generation / Editing"]
+      GenFaceMap["generateFaceMap()\ngemini-3.1-flash-image-preview\n→ fallback gemini-2.5-flash-image\nDots + arrows overlay"]
+      ApplyMakeup["applyMakeupToUser()\ngemini-3.1-flash-image-preview\n→ fallback gemini-2.5-flash-image\nVirtual try-on"]
+      GenRefImg["generateReferenceImage()\ngemini-2.5-flash-image\n→ fallback gemini-3.1-flash-image-preview\nInspiration photo"]
+    end
+
+    subgraph VideoModel["Video Generation"]
+      GenVideo["generateMakeupVideo()\nveo-3.1-fast-generate-preview\nPolling until done"]
+    end
+
+    subgraph AudioModel["TTS"]
+      GenSpeech["generateSpeech()\ngemini-2.5-flash-preview-tts\nZephyr voice"]
+    end
+
+    subgraph LiveModel["Live Multimodal Agent"]
+      LiveAgent["connectLiveAgent()\ngemini-2.5-flash-native-audio-preview\nAudio + Video stream\nTool declarations injected"]
+    end
+
+    subgraph ToolDeclarations["Tool Declarations (function schemas)"]
+      TD1["generateFaceMapFunction"]
+      TD2["applyMakeupToUserFunction"]
+      TD3["generateMakeupVideoFunction"]
+      TD4["addToWishlistFunction"]
+      TD5["showReferenceImageFunction"]
+      TD6["requestVisualUpdateFunction"]
+    end
+
+    LiveAgent --> TD1 & TD2 & TD3 & TD4 & TD5 & TD6
+    GenAdvice --> TD4
+  end
+
+  %% ── Audio Services ──────────────────────────────────────────────────────
+  subgraph AudioSvc["services/audio.ts"]
+    Streamer["AudioStreamer\nMic → PCM 16kHz → base64\nVolume callback"]
+    Player["AudioPlayer\nbase64 PCM → AudioContext\nScheduled playback + interrupt"]
+  end
+
+  %% ── Utils ───────────────────────────────────────────────────────────────
+  subgraph Utils["utils/image.ts"]
+    Compress["compressImage()\nCanvas resize + JPEG quality"]
+  end
+
+  %% ── App → Services wiring ───────────────────────────────────────────────
+  HandleSend -->|text + image| GenAdvice
+  HandleSend -->|image| ValidateImg
+  HandleSend -->|image| Compress
+
+  ToggleLive -->|start session| LiveAgent
+  ToggleLive -->|mic stream| Streamer
+  ToggleLive -->|audio output| Player
+  PlayVerbal --> GenSpeech
+  GenSpeech -->|base64 PCM| Player
+
+  CameraCanvas -->|frame base64| ValidateImg
+  CameraCanvas -->|frame base64| GenFaceMap
+  CameraCanvas -->|frame base64| ApplyMakeup
+
+  VM -->|product image| AnalyzeProd
+  VM -->|image| Compress
+
+  %% ── Live agent tool-call dispatch (inside App.tsx) ──────────────────────
+  subgraph ToolDispatch["Live Tool-Call Dispatch (App.tsx onmessage)"]
+    TC_FaceMap["generateFaceMap call\n→ validateImageForMakeup\n→ generateFaceMap\n→ addDoc message"]
+    TC_Apply["applyMakeupToUser call\n→ validateImageForMakeup\n→ applyMakeupToUser\n→ addDoc message"]
+    TC_Ref["showReferenceImage call\n→ generateReferenceImage\n→ addDoc message"]
+    TC_Video["generateMakeupVideo call\n→ generateMakeupVideo\n→ addDoc message"]
+    TC_Wish["addToWishlist call\n→ addDoc wishlist\n→ addDoc message"]
+    TC_Visual["requestVisualUpdate call\n→ captureFrame\n→ sendRealtimeInput"]
+  end
+
+  LiveAgent -->|tool calls| ToolDispatch
+  TC_FaceMap --> GenFaceMap & ValidateImg & FBCollections
+  TC_Apply --> ApplyMakeup & ValidateImg & FBCollections
+  TC_Ref --> GenRefImg & FBCollections
+  TC_Video --> GenVideo & FBCollections
+  TC_Wish --> FBCollections
+  TC_Visual --> CameraCanvas & LiveAgent
+
+  %% ── Styles ──────────────────────────────────────────────────────────────
+  classDef firebase fill:#f59e0b,color:#000,stroke:#d97706
+  classDef gemini  fill:#6366f1,color:#fff,stroke:#4f46e5
+  classDef audio   fill:#10b981,color:#000,stroke:#059669
+  classDef ui      fill:#3f3f46,color:#fff,stroke:#52525b
+  classDef util    fill:#27272a,color:#e4e4e7,stroke:#3f3f46
+
+  class FBInit,FBAuth,FBCollections,FBError firebase
+  class GenAdvice,ValidateImg,FindStores,AnalyzeProd,GenFaceMap,ApplyMakeup,GenRefImg,GenVideo,GenSpeech,LiveAgent,TD1,TD2,TD3,TD4,TD5,TD6 gemini
+  class Streamer,Player audio
+  class main,EB,Auth,ChatState,LiveState,VanityState,CameraCanvas,HandleSend,ToggleLive,PlayVerbal,VM ui
+  class Compress util
+  </div>
+
+  <script>mermaid.initialize({ startOnLoad: true, theme: 'dark' });</script>
+</body>
+</html>
