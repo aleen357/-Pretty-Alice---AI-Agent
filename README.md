@@ -6,14 +6,35 @@ Pretty Alice is a full-stack AI beauty coaching app powered by Google Gemini. Us
 
 ## What it does
 
-- Live voice agent — talk to Alice in real time using your mic and camera
-- Virtual try-on — upload a photo and see how any makeup look appears on your face
-- Face maps — get annotated placement guides drawn directly on your photo
-- Makeup advice — text chat with full conversation history and vanity kit context
-- Vanity kit — add your makeup products, Alice recommends them in every response
-- Beauty Essentials — Alice saves product recommendations to your wishlist
-- Video tutorials — generate short makeup technique videos
-- Store finder — find nearby beauty stores using Google Search
+### 🎙️ Live Voice Agent — the core experience
+
+Talk to Alice hands-free in real time. Alice listens, speaks back, and sees your face through your camera whenever she needs to. You don't have to type a single word.
+
+While in voice mode Alice can do everything the app offers — just hold your camera steady when you want her to see your progress or when she asks to look at you:
+
+- **Virtual try-on** — ask "how would a smokey eye look on me?" and Alice captures your face, applies the look, and shows you the result in the chat
+- **Face maps** — ask "where do I apply blush?" and Alice draws a precise placement guide directly on your photo
+- **Reference images** — ask "show me a dewy glass skin look" and Alice generates a professional beauty reference image. You can go ahead and try it on
+- **Small Generated Video** - this feature can generate a really small video on your makeup queries (Needs to be tuned)
+
+### 💄 Vanity Kit
+
+Vanity kit is an important utility to Agent as it lets agent know what weapons are already in your makeup kit and it helps Alice guide you using your products instead of new ones
+---
+
+## Tech Stackup products by photo — Alice's Vanity Vision AI reads the product label and auto-fills the name, brand, category, and shade. Once your kit is set up, Alice references it in every conversation and recommends what you already own before suggesting anything new.orials** — ask for a technique and Alice generates a short tutorial clip
+
+The camera is passive — Alice only looks when she needs to. You stay in control of the conversation throughout.
+
+---
+
+### 💬 Text Chat
+
+Everything Alice can do in voice mode is also available in text chat. Upload photos directly, ask questions, get step-by-step guides, and see all results in the chat history.
+
+- Virtual try-on — upload your photo and a reference look
+- Face maps — annotated placement guides on your own photo
+- Makeup advice — full conversation with your vanity kit as context
 
 ---
 
