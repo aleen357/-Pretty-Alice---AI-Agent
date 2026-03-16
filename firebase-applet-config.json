@@ -1,10 +1,10 @@
 {
-  "projectId": "makeup-agent",
-  "appId": "1:641248219574:web:fda5d715c21ad42566b117",
-  "apiKey": "AIzaSyDfy8Eyky2mapmuQdrJUvX5U_wzjt4sQcw",
-  "authDomain": "makeup-agent.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-e57b9aeb-f530-42ea-ad2d-ec1a9e6fc647",
-  "storageBucket": "makeup-agent.firebasestorage.app",
-  "messagingSenderId": "641248219574",
+  "projectId": "",
+  "appId": "",
+  "apiKey": "",
+  "authDomain": "",
+  "firestoreDatabaseId": "",
+  "storageBucket": "",
+  "messagingSenderId": "",
   "measurementId": ""
 }
