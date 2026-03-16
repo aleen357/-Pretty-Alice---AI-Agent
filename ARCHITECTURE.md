@@ -1,9 +1,9 @@
 # Pretty Alice – Architecture Overview
 
 ## Hosting
-- Frontend  → Firebase Hosting       (https://makeup-agent.web.app)
-- Backend   → Google Cloud Run       (https://pretty-alice-backend-641248219574.us-central1.run.app)
-- Database  → Firebase Firestore     (project: makeup-agent)
+- Frontend  → Firebase Hosting       (https://your-project.web.app)
+- Backend   → Google Cloud Run       (https://your-backend-url.run.app)
+- Database  → Firebase Firestore     (project: your-firebase-project)
 - Auth      → Firebase Auth          (Google OAuth)
 
 ---
@@ -129,7 +129,7 @@ backend/src/
     │         Identifies makeup product from photo (Vanity Vision AI)
     │         Returns: { name, brand, category, shade }
     │         Model: gemini-3-flash-preview
-    │
+    │a
     ├── images.ts             Visual generation routes
     │   │                     All use responseModalities: ['TEXT','IMAGE']
     │   │                     Primary: gemini-3-pro-image-preview
