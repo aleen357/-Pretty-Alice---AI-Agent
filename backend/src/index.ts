@@ -1,12 +1,12 @@
 import http from 'http';
 import express from 'express';
 import cors from 'cors';
-import { adviceRouter } from './routes/advice';
-import { imagesRouter } from './routes/images';
-import { videoRouter } from './routes/video';
-import { speechRouter } from './routes/speech';
-import { storesRouter } from './routes/stores';
-import { liveRouter, attachLiveWss } from './routes/live';
+import { adviceRouter } from './routes/advice.js';
+import { imagesRouter } from './routes/images.js';
+import { videoRouter } from './routes/video.js';
+import { speechRouter } from './routes/speech.js';
+import { storesRouter } from './routes/stores.js';
+import { liveRouter, attachLiveWss } from './routes/live.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;

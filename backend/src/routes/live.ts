@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { WebSocketServer, WebSocket } from 'ws';
 import { Modality } from '@google/genai';
 import { getAuth } from 'firebase-admin/auth';
-import { getAI, SYSTEM_PROMPT, generateFaceMapFunction, applyMakeupToUserFunction, generateMakeupVideoFunction, addToWishlistFunction, showReferenceImageFunction, requestVisualUpdateFunction } from '../lib/gemini';
+import { getAI, SYSTEM_PROMPT, generateFaceMapFunction, applyMakeupToUserFunction, generateMakeupVideoFunction, addToWishlistFunction, showReferenceImageFunction, requestVisualUpdateFunction } from '../lib/gemini.js';
 
 export const liveRouter = Router();
 
@@ -58,6 +58,7 @@ export function attachLiveWss(server: import('http').Server) {
           responseModalities: [Modality.AUDIO],
           speechConfig: {
             voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } },
+            languageCode: 'en-US',
           },
           tools: [{
             functionDeclarations: [
@@ -71,7 +72,8 @@ export function attachLiveWss(server: import('http').Server) {
           }],
           systemInstruction: `${SYSTEM_PROMPT}
 ${context ? `\nRECENT CONTEXT:\n${context}` : ''}
-You are in a live audio session. Use tools for visual requests. Be decisive — call each tool once and wait.`,
+You are in a live audio session. Use tools for visual requests. Be decisive — call each tool once and wait.
+LANGUAGE: You must ALWAYS respond in English only, regardless of what language the user speaks in. Never switch languages.`,
           inputAudioTranscription: {},
           outputAudioTranscription: {},
         },

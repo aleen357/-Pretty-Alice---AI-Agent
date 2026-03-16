@@ -1,15 +1,20 @@
 import { Router } from 'express';
-import { requireAuth, AuthRequest } from '../middleware/auth';
-import { getAI } from '../lib/gemini';
+import { requireAuth, AuthRequest } from '../middleware/auth.js';
+import { getAI } from '../lib/gemini.js';
 
 export const imagesRouter = Router();
 
 const tryImageModel = async (ai: any, modelName: string, parts: any[]) => {
   try {
-    const response = await ai.models.generateContent({ model: modelName, contents: { parts } });
+    const response = await ai.models.generateContent({
+      model: modelName,
+      contents: { parts },
+      config: { responseModalities: ['TEXT', 'IMAGE'] }
+    });
     for (const part of response.candidates?.[0]?.content?.parts ?? []) {
       if (part.inlineData) return `data:image/png;base64,${part.inlineData.data}`;
     }
+    console.warn(`${modelName} returned no image data`);
     return null;
   } catch (err) {
     console.error(`${modelName} failed:`, err);
@@ -27,13 +32,19 @@ imagesRouter.post('/face-map', requireAuth, async (req: AuthRequest, res) => {
     const parts = [
       { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } },
       {
-        text: `You are a professional makeup artist. EDIT this image to create a precise makeup application guide for: ${prompt}.
-Guidelines:
-- Use colored dots for placement points, arrows for blending direction, shaded areas for diffusion zones.
-- For eye/lip requests, zoom in mentally and mark ONLY the relevant area.
-- No stray marks on unrelated face areas.
-- No connecting lines between left and right eyes.
-- Style: clean, professional, high-end beauty masterclass diagram.`,
+        text: `You are a world-class makeup artist and beauty educator creating a luxury editorial guide.
+EDIT this image to produce a POLISHED, HIGH-END makeup application diagram for: ${prompt}.
+
+QUALITY STANDARDS:
+- The base skin must look flawless, hydrated, and luminous — never dry, cakey, or flat.
+- Any makeup shown must appear freshly applied, blended to perfection, with a professional finish.
+- Lighting should look soft and flattering, as if shot in a high-end beauty studio.
+
+DIAGRAM GUIDELINES:
+- Use elegant colored dots for precise placement points, fine arrows for blending direction, soft shaded overlays for diffusion zones.
+- For eye or lip requests, mentally zoom in and mark ONLY that area with surgical precision.
+- Zero stray marks on unrelated areas. No lines connecting left and right eyes.
+- The overall aesthetic should feel like a diagram from a Vogue beauty masterclass — clean, sophisticated, aspirational.`,
       },
     ];
 
@@ -60,16 +71,31 @@ imagesRouter.post('/apply-makeup', requireAuth, async (req: AuthRequest, res) =>
     if (referenceImageBase64) {
       parts.push({ inlineData: { mimeType: 'image/jpeg', data: referenceImageBase64 } });
       parts.push({
-        text: `You are a professional makeup artist.
-First image = user's face. Second image = reference look.
-EDIT the user's photo to apply the reference makeup style: ${prompt}.
-Rules: realistic blending, no arrows/dots/text, preserve identity.`,
+        text: `You are a world-class makeup artist working on a luxury beauty editorial.
+First image = the user's face. Second image = the reference makeup look to replicate.
+
+EDIT the user's photo to apply the reference look: ${prompt}.
+
+QUALITY STANDARDS:
+- Skin must look flawless, dewy, and luminous — perfectly primed, never dry, cakey, or patchy.
+- All makeup must appear expertly blended with seamless transitions and a professional finish.
+- Colors should be rich, vibrant, and true-to-reference — not washed out or muddy.
+- The result should look like a high-end beauty campaign photo, not a filter.
+- Preserve the user's facial identity, bone structure, and natural features completely.
+- No arrows, dots, text, or technical markings of any kind on the image.`,
       });
     } else {
       parts.push({
-        text: `You are a professional makeup artist.
-EDIT this photo to show how the user looks with: ${prompt}.
-Rules: realistic blending, no arrows/dots/text, preserve identity, high-end result.`,
+        text: `You are a world-class makeup artist working on a luxury beauty editorial.
+EDIT this photo to show the user wearing: ${prompt}.
+
+QUALITY STANDARDS:
+- Skin must look flawless, dewy, and luminous — perfectly primed, never dry, cakey, or patchy.
+- All makeup must appear expertly blended with seamless transitions and a professional finish.
+- Colors should be rich, vibrant, and true to the requested look — not washed out or muddy.
+- The result should look like a high-end beauty campaign photo, not a filter.
+- Preserve the user's facial identity, bone structure, and natural features completely.
+- No arrows, dots, text, or technical markings of any kind on the image.`,
       });
     }
 
@@ -93,8 +119,14 @@ imagesRouter.post('/reference', requireAuth, async (req: AuthRequest, res) => {
 
     const parts = [
       {
-        text: `Generate a high-quality professional beauty reference image for: ${prompt}.
-Clean, well-lit, focused on makeup details. Professional beauty campaign style.`,
+        text: `Generate a stunning, high-end beauty reference image for: ${prompt}.
+
+QUALITY STANDARDS:
+- Shot style: luxury beauty campaign or Vogue editorial — soft studio lighting, flawless skin, rich colors.
+- Makeup must look freshly applied, expertly blended, and polished to perfection.
+- Skin should appear luminous, hydrated, and airbrushed — never dry, flat, or cakey.
+- Colors vivid and true-to-life, not washed out.
+- Close-up framing that highlights the makeup details beautifully.`,
       },
     ];
 

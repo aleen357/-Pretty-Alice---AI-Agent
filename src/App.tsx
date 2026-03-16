@@ -76,6 +76,7 @@ export default function App() {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [micLevel, setMicLevel] = useState(0);
   const [lastReferenceImage, setLastReferenceImage] = useState<string | null>(null);
+  const [debugError, setDebugError] = useState<string | null>(null);
   const lastReferenceImageRef = useRef<string | null>(null);
   const lastUserFaceRef = useRef<string | null>(null);
   const liveSessionRef = useRef<any>(null);
@@ -159,39 +160,36 @@ export default function App() {
       return;
     }
 
-    // Request both audio and video at once for better mobile support
+    // Request mic first (required), then camera separately (optional)
     let stream: MediaStream | null = null;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ 
+      stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true
-        },
-        video: true 
+        }
       });
-    } catch (err) {
-      console.warn("Failed to get both audio and video, trying audio only:", err);
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({ 
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true
-          }
-        });
-      } catch (audioErr) {
-        console.error("Failed to get audio:", audioErr);
-        throw audioErr;
-      }
+    } catch (audioErr) {
+      console.error("Failed to get mic:", audioErr);
+      setDebugError(`Mic permission denied: ${String(audioErr)}`);
+      throw audioErr;
     }
 
-    if (videoRef.current && stream) {
+    // Try to add video track to the same stream (optional — live session works without it)
+    try {
+      const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+      videoStream.getVideoTracks().forEach(track => stream!.addTrack(track));
+    } catch (err) {
+      console.warn("Camera not available, continuing with audio only:", err);
+    }
+
+    if (videoRef.current && stream.getVideoTracks().length > 0) {
       videoRef.current.srcObject = stream;
       try {
         await videoRef.current.play();
       } catch (e) {
-        console.warn("Auto-play failed, user interaction might be needed:", e);
+        console.warn("Auto-play failed:", e);
       }
     }
 
@@ -243,6 +241,13 @@ export default function App() {
 
       // Prepare context from last 5 messages
       const recentContext = messages.slice(-5).map(m => `${m.sender === 'user' ? 'User' : 'Alice'}: ${m.content}`).join('\n');
+
+      // Build vanity context for the live agent
+      const vanityContext = vanityProducts.length > 0
+        ? `USER'S MAKEUP KIT:\n${vanityProducts.map(p => `- ${p.name} (${p.brand}, ${p.category}${p.shade ? ', shade: ' + p.shade : ''})`).join('\n')}\n\nAlways recommend products from this kit first. Use 'addToWishlist' for anything missing.`
+        : '';
+
+      const fullContext = [vanityContext, recentContext].filter(Boolean).join('\n\n');
 
       const session = await connectLiveAgent({
         onopen: () => {
@@ -570,12 +575,13 @@ export default function App() {
           setIsSessionReady(false);
           isSessionReadyRef.current = false;
         }
-      }, recentContext);
+      }, fullContext);
 
       liveSessionRef.current = session;
     } catch (err) {
       console.error("Failed to connect live agent:", err);
       handleApiError(err);
+      setDebugError(String(err));
       setIsLive(false);
     }
   };
@@ -1001,6 +1007,11 @@ export default function App() {
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-[#0a0a0a] text-zinc-100 flex flex-col font-sans">
+      {debugError && (
+        <div className="fixed bottom-20 left-4 right-4 z-[999] bg-red-900/90 border border-red-500 rounded-xl p-3 text-xs text-red-200 break-all" onClick={() => setDebugError(null)}>
+          <strong>Error (tap to dismiss):</strong> {debugError}
+        </div>
+      )}
       {/* Header */}
       <header className="h-16 border-b border-white/5 flex items-center justify-between px-4 sm:px-6 bg-black/50 backdrop-blur-xl sticky top-0 z-50">
         <div className="flex items-center gap-2 sm:gap-3">
@@ -1262,6 +1273,12 @@ export default function App() {
                   )}
                   {isLive ? <Mic className="w-5 h-5 relative z-10" /> : <MicOff className="w-5 h-5 relative z-10" />}
                 </button>
+                {isLive && !isSessionReady && (
+                  <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] text-yellow-400 whitespace-nowrap">connecting...</div>
+                )}
+                {isLive && isSessionReady && (
+                  <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] text-emerald-400 whitespace-nowrap">live</div>
+                )}
               </div>
             </div>
             <button 

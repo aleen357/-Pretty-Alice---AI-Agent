@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { Type } from '@google/genai';
-import { requireAuth, AuthRequest } from '../middleware/auth';
-import { getAI, SYSTEM_PROMPT, addToWishlistFunction } from '../lib/gemini';
+import { requireAuth, AuthRequest } from '../middleware/auth.js';
+import { getAI, SYSTEM_PROMPT, addToWishlistFunction } from '../lib/gemini.js';
 
 export const adviceRouter = Router();
 
@@ -31,6 +31,7 @@ adviceRouter.post('/', requireAuth, async (req: AuthRequest, res) => {
 
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
+      contents: contents as any,
       config: {
         systemInstruction,
         tools: [{ functionDeclarations: [addToWishlistFunction] }],

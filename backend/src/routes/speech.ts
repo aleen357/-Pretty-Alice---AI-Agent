@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { Modality } from '@google/genai';
-import { requireAuth, AuthRequest } from '../middleware/auth';
-import { getAI } from '../lib/gemini';
+import { requireAuth, AuthRequest } from '../middleware/auth.js';
+import { getAI } from '../lib/gemini.js';
 
 export const speechRouter = Router();
 

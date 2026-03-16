@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { requireAuth, AuthRequest } from '../middleware/auth';
-import { getAI } from '../lib/gemini';
+import { requireAuth, AuthRequest } from '../middleware/auth.js';
+import { getAI } from '../lib/gemini.js';
 
 export const storesRouter = Router();
 
